@@ -1,37 +1,76 @@
-###########################################################
-# Rename the file extension to ".yaml" (remove "_") to enable
-###########################################################
 
-name: Docker Series Builds
 
-on: [push]
+
+
+name: CI/CD
+
+on:
+  push:
+    branches: [ staging ]
+  pull_request:
+    branches: [ staging ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+
+    runs-on: ubuntu-22.04
+
     steps:
-    - uses: actions/checkout@v2
-    - name: docker login
-      env:
-        DOCKER_USER: ${{ secrets.DOCKER_USER }}   
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}  
-      run: |
-        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
-    - name: docker build csharp
-      run: |
-        docker build ./c# -t aimvector/csharp:1.0.0
-    - name: docker build nodejs
-      run: |
-        docker build ./nodejs -t aimvector/nodejs:1.0.0
-    - name: docker build python
-      run: |
-        docker build ./python -t aimvector/python:1.0.0
-    - name: docker build golang
-      run: |
-        docker build ./golang -t aimvector/golang:1.0.0
-    - name: docker push
-      run: |
-        docker push aimvector/csharp:1.0.0
-        docker push aimvector/nodejs:1.0.0
-        docker push aimvector/golang:1.0.0
-        docker push aimvector/python:1.0.0
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+
+    - name: Install dependencies
+      run: yarn install
+
+
+    - name: Build project
+      run: yarn build
+    - name: Upload production-ready build files
+      uses: actions/upload-artifact@v3
+      with:
+        name: production-files
+        path: ./dist
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: production-files
+          path: ./dist
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.SMOVEE_SECRET_TOKEN }}
+          publish_dir: ./dist
+
+          
+    # - name: Run the tests and generate coverage report
+    #   run: yarn test -- --coverage
+
+    # - name: Upload coverage to Codecov
+    #   uses: codecov/codecov-action@v1
+
+    # - name: Build
+    #   run: yarn build
+
+         
+    # - name: Build & push Docker image
+    #   uses: actions/checkout@v3
+    #   with:
+    #     image: udokachi/live-project-front-end-image
+    #     tags: latest
+    #     registry: docker.io
+    #     dockerfile: Dockerfile
+    #     username: ${{ secrets.DOCKER_USERNAME }}
+    #     password: ${{ secrets.DOCKER_PASSWORD }}
+
+
